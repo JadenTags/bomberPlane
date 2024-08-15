@@ -94,7 +94,7 @@ void loop() {
 
     //RUDDER
     if (abs(rudderInDur - 1450) > 50) {
-      int angle = max(min(((double) (rudderInDur - 960) / 1000) * 60, 60), 0) + 15;
+      int angle = max(min(((double) (rudderInDur - 960) / 1000) * 60, 60), 0) + 60;
 
       rudderServo.write(180 - angle);
     } else {
@@ -103,7 +103,7 @@ void loop() {
 
     //ELEVATORS
     if (abs(elevatorInDur - 1450) > 50) {
-      int angle = max(min(((double) (elevatorInDur - 960) / 1000) * 60, 60), 0) + 15;
+      int angle = max(min(((double) (elevatorInDur - 960) / 1000) * 60, 60), 0) + 60;
 
       elevatorServo.write(angle);
     } else {
@@ -112,7 +112,9 @@ void loop() {
 
     //AILERONS
     if (abs(aileronInDur - 1450) > 50) {
-      int angle = max(min(((double) (aileronInDur - 960) / 1000) * 60, 60), 0) + 15;
+      int angle = max(min(((double) (aileronInDur - 960) / 1000) * 60, 60), 0) + 60;
+
+      Serial.println(angle);
 
       leftAileronServo.write(angle);
       rightAileronServo.write(angle);
