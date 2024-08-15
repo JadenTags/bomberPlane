@@ -11,10 +11,14 @@ Servo missileServo;
 Servo xCameraServo;
 Servo yCameraServo;
 
-int leftAileronPin = 2;
-int rightAileronPin = 3;
-int elevatorPin = 4;
-int rudderPin = 5;
+unsigned long rudderInDur;
+unsigned long elevatorInDur;
+unsigned long aileronInDur;
+
+int rudderPin = 2;
+int elevatorPin = 3;
+int leftAileronPin = 4;
+int rightAileronPin = 5;
 int frontLandingGearPin = 6;
 int rearLandingGearPin = 7;
 int bombBayPin = 8;
@@ -22,6 +26,11 @@ int missilePin = 9;
 int xCameraPin = 10;
 int yCameraPin = 11;
 int motorPin = 12;
+
+int throttleInPin = 22;
+int rudderInPin = 23;
+int elevatorInPin = 24;
+int aileronInPin = 25;
 
 //BOMBING STATE
 bool bombingState = false;
@@ -47,43 +56,65 @@ void setup() {
   xCameraServo.attach(xCameraPin);
   yCameraServo.attach(yCameraPin);
 
-  pinMode(leftAileronServo, OUTPUT);
-  pinMode(rightAileronServo, OUTPUT);
-  pinMode(elevatorsServo, OUTPUT);
-  pinMode(rudderServo, OUTPUT);
-  pinMode(frontLandingGearServo, OUTPUT);
-  pinMode(rearLandingGearServo, OUTPUT);
-  pinMode(bombBayServo, OUTPUT);
-  pinMode(missileServo, OUTPUT);
-  pinMode(xCameraServo, OUTPUT);
-  pinMode(yCameraServo, OUTPUT);
+  pinMode(rudderInPin, INPUT);
+  pinMode(elevatorInPin, INPUT);
+  pinMode(aileronInPin, INPUT);
+  
+  pinMode(leftAileronPin, OUTPUT);
+  pinMode(rightAileronPin, OUTPUT);
+  pinMode(elevatorPin, OUTPUT);
+  pinMode(rudderPin, OUTPUT);
+  pinMode(frontLandingGearPin, OUTPUT);
+  pinMode(rearLandingGearPin, OUTPUT);
+  pinMode(bombBayPin, OUTPUT);
+  pinMode(missilePin, OUTPUT);
+  pinMode(xCameraPin, OUTPUT);
+  pinMode(yCameraPin, OUTPUT);
   pinMode(motorPin, OUTPUT);
 
   Serial.begin(9600);
 }
 
 void loop() {
+  rudderInDur = pulseIn(rudderInPin, HIGH, 50000);
+  elevatorInDur = pulseIn(elevatorInPin, HIGH, 50000);
+  aileronInDur = pulseIn(aileronInPin, HIGH, 50000);
+
+  Serial.println(aileronInDur);
+  
   if (!bombingState) {
     //THROTTLE
     if (false) {
 
     }
 
-    //AILERONS
-    if (false) { //ONE IF FOR ROLL AND ANOTHER IF FOR TAKEOFF/LANDING
-      //deal with calculations n shit
+    //RUDDER
+    if (abs(rudderInDur - 1450) > 50) {
+      int angle = max(min(((double) (rudderInDur - 960) / 1000) * 180, 180), 0);
+
+      rudderServo.write(180 - angle);
     } else {
-      //HANDLE AUTO STEADY HERE
+      rudderServo.write(90);
     }
 
     //ELEVATORS
-    if (false) {
+    if (abs(elevatorInDur - 1450) > 50) {
+      int angle = max(min(((double) (elevatorInDur - 960) / 1000) * 180, 180), 0);
 
+      elevatorServo.write(angle);
+    } else {
+      elevatorServo.write(90);
     }
 
-    //RUDDER
-    if (false) {
+    //AILERONS
+    if (abs(aileronInDur - 1450) > 50) {
+      int angle = max(min(((double) (aileronInDur - 960) / 1000) * 180, 180), 0);
 
+      leftAileronServo.write(angle);
+      rightAileronServo.write(angle);
+    } else {
+      leftAileronServo.write(90);
+      rightAileronServo.write(90);
     }
     
     //LANDING GEAR
@@ -131,4 +162,6 @@ void loop() {
       bombingState = false;
     }
   }
+
+//  delay(100);
 }
