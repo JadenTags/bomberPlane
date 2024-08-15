@@ -11,6 +11,7 @@ Servo missileServo;
 Servo xCameraServo;
 Servo yCameraServo;
 
+unsigned long throttleInDur;
 unsigned long rudderInDur;
 unsigned long elevatorInDur;
 unsigned long aileronInDur;
@@ -56,6 +57,7 @@ void setup() {
   xCameraServo.attach(xCameraPin);
   yCameraServo.attach(yCameraPin);
 
+  pinMode(throttleInPin, INPUT);
   pinMode(rudderInPin, INPUT);
   pinMode(elevatorInPin, INPUT);
   pinMode(aileronInPin, INPUT);
@@ -76,6 +78,7 @@ void setup() {
 }
 
 void loop() {
+  throttleInDur = pulseIn(throttleInPin, HIGH, 50000);
   rudderInDur = pulseIn(rudderInPin, HIGH, 50000);
   elevatorInDur = pulseIn(elevatorInPin, HIGH, 50000);
   aileronInDur = pulseIn(aileronInPin, HIGH, 50000);
@@ -84,13 +87,14 @@ void loop() {
   
   if (!bombingState) {
     //THROTTLE
-    if (false) {
-
+    if (abs(throttleInDur - 1450) > 50) { //FINISH SHIT NOW
+      int angle = max(min(((double) (throttleInDur - 960) / 1000) * 180, 180), 0);
+    } else {
     }
 
     //RUDDER
     if (abs(rudderInDur - 1450) > 50) {
-      int angle = max(min(((double) (rudderInDur - 960) / 1000) * 180, 180), 0);
+      int angle = max(min(((double) (rudderInDur - 960) / 1000) * 60, 60), 0) + 15;
 
       rudderServo.write(180 - angle);
     } else {
@@ -99,7 +103,7 @@ void loop() {
 
     //ELEVATORS
     if (abs(elevatorInDur - 1450) > 50) {
-      int angle = max(min(((double) (elevatorInDur - 960) / 1000) * 180, 180), 0);
+      int angle = max(min(((double) (elevatorInDur - 960) / 1000) * 60, 60), 0) + 15;
 
       elevatorServo.write(angle);
     } else {
@@ -108,7 +112,7 @@ void loop() {
 
     //AILERONS
     if (abs(aileronInDur - 1450) > 50) {
-      int angle = max(min(((double) (aileronInDur - 960) / 1000) * 180, 180), 0);
+      int angle = max(min(((double) (aileronInDur - 960) / 1000) * 60, 60), 0) + 15;
 
       leftAileronServo.write(angle);
       rightAileronServo.write(angle);
