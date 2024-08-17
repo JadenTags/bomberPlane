@@ -184,7 +184,7 @@ void loop() {
         bayOpen = false;
       }
 
-      //MISSILE NUM
+      //BOMB NUM
       if (sbDur <= 1300 || bombs == 1) {
         bombNum = 1;
       } else if (sbDur <= 1700) {
@@ -193,7 +193,7 @@ void loop() {
         bombNum = bombs;
       }
 
-      //MISSILES
+      //BOMBS
       if (shDur < 1500) {
         bombPrimed = true;
       } else if (bombPrimed) {
@@ -212,9 +212,32 @@ void loop() {
       }
     }
   } else {
-    //SET CONSTANT SPEED
+    bayServo.write(bayAngle);
+    bayOpen = true;
+
     //AUTO STEADY
 
-    //CAMERA CONTROLS
+    //CAMERA Y
+    if (abs(rYDur - 1450) > deadzone) {
+    } else {
+    }
+
+    //CAMERA X
+    if (abs(rXDur - 1450) > deadzone) {
+    } else {
+    }
+
+    //BOMB NUM
+    if (sbDur <= 1300 || bombs == 1) {
+      bombNum = 1;
+    } else if (sbDur <= 1700) {
+      bombNum = 2;
+    } else {
+      bombNum = bombs;
+    }
+
+    if (shDur < 1500) {
+      //WRITE BOMB CODE
+    }
   }
 }
