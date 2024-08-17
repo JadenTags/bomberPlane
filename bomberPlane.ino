@@ -15,6 +15,10 @@ unsigned long throttleInDur;
 unsigned long rudderInDur;
 unsigned long elevatorInDur;
 unsigned long aileronInDur;
+unsigned long modeSwitchInDur;
+unsigned long missileInDur;
+unsigned long landingInDur;
+unsigned long missileNumInDur;
 
 int rudderPin = 2;
 int elevatorPin = 3;
@@ -29,13 +33,21 @@ int yCameraPin = 11;
 int motorPin = 12;
 
 int throttleInPin = 22;
-int rudderInPin = 23;
+int aileronInPin = 23;
 int elevatorInPin = 24;
-int aileronInPin = 25;
+int rudderInPin = 25;
+int modeSwitchInPin = 26;
+int missileInPin = 27;
+int landingInPin = 28;
+int missileNumInPin = 29;
 
 //BOMBING STATE
 bool bombingState = false;
 double speed;
+
+//BOMBING
+bool bombPrimed = false;
+int missileNum;
 
 //LANDING GEAR
 bool landingGearDeployed = false;
@@ -61,6 +73,10 @@ void setup() {
   pinMode(rudderInPin, INPUT);
   pinMode(elevatorInPin, INPUT);
   pinMode(aileronInPin, INPUT);
+  pinMode(modeSwitchInPin, INPUT);
+  pinMode(missileInPin, INPUT);
+  pinMode(landingInPin, INPUT);
+  pinMode(missileNumInPin, INPUT);
   
   pinMode(leftAileronPin, OUTPUT);
   pinMode(rightAileronPin, OUTPUT);
@@ -78,23 +94,32 @@ void setup() {
 }
 
 void loop() {
-  throttleInDur = pulseIn(throttleInPin, HIGH, 50000);
-  rudderInDur = pulseIn(rudderInPin, HIGH, 50000);
-  elevatorInDur = pulseIn(elevatorInPin, HIGH, 50000);
-  aileronInDur = pulseIn(aileronInPin, HIGH, 50000);
+  throttleInDur = pulseIn(throttleInPin, HIGH, 30000);
+  rudderInDur = pulseIn(rudderInPin, HIGH, 30000);
+  elevatorInDur = pulseIn(elevatorInPin, HIGH, 30000);
+  aileronInDur = pulseIn(aileronInPin, HIGH, 30000);
+  modeSwitchInDur = pulseIn(modeSwitchInPin, HIGH, 30000);
+  missileInDur = pulseIn(missileInPin, HIGH, 30000);
+  landingInDur = pulseIn(landingInPin, HIGH, 30000);
+  missileNumInDur = pulseIn(missileNumInPin, HIGH, 30000);
 
-  Serial.println(aileronInDur);
+  if (modeSwitchInDur < 1500) {
+    bombingState = false;
+  } else {
+    bombingState = true;
+  }
   
   if (!bombingState) {
     //THROTTLE
     if (abs(throttleInDur - 1450) > 50) { //FINISH SHIT NOW
-      int angle = max(min(((double) (throttleInDur - 960) / 1000) * 180, 180), 0);
-    } else {
+      int throttle = max(min(((double) (throttleInDur - 950) / 1000) * 180, 180), 0);
+
+      //DO REST
     }
 
     //RUDDER
     if (abs(rudderInDur - 1450) > 50) {
-      int angle = max(min(((double) (rudderInDur - 960) / 1000) * 60, 60), 0) + 60;
+      int angle = max(min(((double) (rudderInDur - 950) / 1000) * 60, 60), 0) + 60;
 
       rudderServo.write(180 - angle);
     } else {
@@ -103,7 +128,7 @@ void loop() {
 
     //ELEVATORS
     if (abs(elevatorInDur - 1450) > 50) {
-      int angle = max(min(((double) (elevatorInDur - 960) / 1000) * 60, 60), 0) + 60;
+      int angle = max(min(((double) (elevatorInDur - 950) / 1000) * 60, 60), 0) + 60;
 
       elevatorServo.write(angle);
     } else {
@@ -112,9 +137,7 @@ void loop() {
 
     //AILERONS
     if (abs(aileronInDur - 1450) > 50) {
-      int angle = max(min(((double) (aileronInDur - 960) / 1000) * 60, 60), 0) + 60;
-
-      Serial.println(angle);
+      int angle = max(min(((double) (aileronInDur - 950) / 1000) * 60, 60), 0) + 60;
 
       leftAileronServo.write(angle);
       rightAileronServo.write(angle);
@@ -124,32 +147,49 @@ void loop() {
     }
     
     //LANDING GEAR
-    if (false) {
-      if (landingGearDeployed) {
-        frontLandingGearServo.write(0);
-        rearLandingGearServo.write(0);
-      } else {
-        frontLandingGearServo.write(landingGearAngle);
-        rearLandingGearServo.write(landingGearAngle);
-      }
+    if (landingInDur <= 1300) {
+      frontLandingGearServo.write(landingGearAngle);
+      rearLandingGearServo.write(landingGearAngle);
 
-      landingGearDeployed = !landingGearDeployed;
-    } 
+      landingGearDeployed = true;
+    } else {
+      frontLandingGearServo.write(0);
+      rearLandingGearServo.write(0);
+      
+      landingGearDeployed = false;
+    }
     
     //BOMB BAY
-    if (false) {
-      if (bombBayOpen) {
-        bombBayServo.write(0);
-      } else {
-        bombBayServo.write(bombBayAngle);
-      }
+    if (landingInDur >= 1700) {
+      bombBayServo.write(bombBayAngle);
 
-      bombBayOpen = !bombBayOpen;
+      bombBayOpen = true;
+    } else {
+      bombBayServo.write(0);
+      
+      bombBayOpen = false;
+    }
+
+    //MISSILE NUM
+    if (missileNumInDur <= 1300) {
+      missileNum = 1;
+    } else if (missileNumInDur <= 1700) {
+      missileNum = 2;
+    } else {
+      missileNum = 20;
     }
 
     //MISSILES
-    if (false) {
-      //DEPLOY MISSILES
+    if (missileInDur < 1500) {
+      bombPrimed = true;
+    } else if (bombPrimed) {
+      bombPrimed = false;
+
+      //BOMB DROP CODE
+      if (bombBayOpen) {
+        Serial.print(missileNum);
+        Serial.println(" bomb(s) dropped");
+      }
     }
 
     //SWITCH TO BOMBING STATE
