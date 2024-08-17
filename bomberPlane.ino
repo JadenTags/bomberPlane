@@ -1,213 +1,220 @@
 #include <Servo.h>
 
-Servo leftAileronServo;
-Servo rightAileronServo;
-Servo elevatorServo;
-Servo rudderServo;
-Servo frontLandingGearServo;
-Servo rearLandingGearServo;
-Servo bombBayServo;
-Servo missileServo;
-Servo xCameraServo;
-Servo yCameraServo;
+//SERVOS
+Servo lAilServo;
+Servo rAilServo;
+Servo eleServo;
+Servo rudServo;
+Servo fGearServo;
+Servo rGearServo;
+Servo bayServo;
+Servo bombServo;
+Servo xCamServo;
+Servo yCamServo;
 
-unsigned long throttleInDur;
-unsigned long rudderInDur;
-unsigned long elevatorInDur;
-unsigned long aileronInDur;
-unsigned long modeSwitchInDur;
-unsigned long missileInDur;
-unsigned long landingInDur;
-unsigned long missileNumInDur;
+//DURATIONS FOR WAVES
+unsigned long lYDur; //THROTTLE
+unsigned long lXDur; //YAW
+unsigned long rYDur; //PITCH
+unsigned long rXDur; //ROLL
+unsigned long sfDur; //MODE LEVER
+unsigned long shDur; //BOMB LEVER
+unsigned long saDur; //LANDING GEAR/BOMB BAY
+unsigned long sbDur; //BOMB NUM
 
-int rudderPin = 2;
-int elevatorPin = 3;
-int leftAileronPin = 4;
-int rightAileronPin = 5;
-int frontLandingGearPin = 6;
-int rearLandingGearPin = 7;
-int bombBayPin = 8;
-int missilePin = 9;
-int xCameraPin = 10;
-int yCameraPin = 11;
+//CONSTANTS
+const bool flyOnly = true;
+const int bombCap = 1;
+const int deadzone = 50; //RANGE AWAY FROM RESTING NUM
+const int minWidth = 950; //LOWEST PULSE WIDTH FROM RADIO TRANSMITTER
+const int throtAllow = 50; //ALLOWANCE FOR THROTTLE MOVEMENT WHEN IN BOMBING STATE
+const int gearAngle = 90;
+const int bayAngle = 90;
+
+//OUTPUT PINS
+int rudPin = 2;
+int elePin = 3;
+int lAilPin = 4;
+int rAilPin = 5;
+int fGearPin = 6;
+int rGearPin = 7;
+int bayPin = 8;
+int bombPin = 9;
+int xCamPin = 10;
+int yCamPin = 11;
 int motorPin = 12;
 
-int throttleInPin = 22;
-int aileronInPin = 23;
-int elevatorInPin = 24;
-int rudderInPin = 25;
-int modeSwitchInPin = 26;
-int missileInPin = 27;
-int landingInPin = 28;
-int missileNumInPin = 29;
+//INPUT PINS
+int lYPin = 22;
+int rXPin = 23;
+int rYPin = 24;
+int lXPin = 25;
+int sfPin = 26;
+int shPin = 27;
+int saPin = 28;
+int sbPin = 29;
 
-//BOMBING STATE
+//PROGRAMMING VARIABLES
+unsigned long throtDur;
+int bombNum;
+
+int bombs = bombCap;
 bool bombingState = false;
-double speed;
-
-//BOMBING
 bool bombPrimed = false;
-int missileNum;
+bool gearDeployed = false;
+bool bayOpen = false;
 
-//LANDING GEAR
-bool landingGearDeployed = false;
-int landingGearAngle = 90;
-
-//BOMB BAY
-bool bombBayOpen = false;
-int bombBayAngle = 90;
+int interpretStick(unsigned long dur, int range, int start) {
+  return (int) max(min(((double) (dur - minWidth) / 1000) * range, range), 0) + start;
+}
 
 void setup() {
-  leftAileronServo.attach(leftAileronPin);
-  rightAileronServo.attach(rightAileronPin);
-  elevatorServo.attach(elevatorPin);
-  rudderServo.attach(rudderPin);
-  frontLandingGearServo.attach(frontLandingGearPin);
-  rearLandingGearServo.attach(rearLandingGearPin);
-  bombBayServo.attach(bombBayPin);
-  missileServo.attach(missilePin);
-  xCameraServo.attach(xCameraPin);
-  yCameraServo.attach(yCameraPin);
+  lAilServo.attach(lAilPin);
+  rAilServo.attach(rAilPin);
+  eleServo.attach(elePin);
+  rudServo.attach(rudPin);
+  fGearServo.attach(fGearPin);
+  rGearServo.attach(rGearPin);
+  bayServo.attach(bayPin);
+  bombServo.attach(bombPin);
+  xCamServo.attach(xCamPin);
+  yCamServo.attach(yCamPin);
 
-  pinMode(throttleInPin, INPUT);
-  pinMode(rudderInPin, INPUT);
-  pinMode(elevatorInPin, INPUT);
-  pinMode(aileronInPin, INPUT);
-  pinMode(modeSwitchInPin, INPUT);
-  pinMode(missileInPin, INPUT);
-  pinMode(landingInPin, INPUT);
-  pinMode(missileNumInPin, INPUT);
+  pinMode(lYPin, INPUT);
+  pinMode(lXPin, INPUT);
+  pinMode(rYPin, INPUT);
+  pinMode(rXPin, INPUT);
+  pinMode(sfPin, INPUT);
+  pinMode(shPin, INPUT);
+  pinMode(saPin, INPUT);
+  pinMode(sbPin, INPUT);
   
-  pinMode(leftAileronPin, OUTPUT);
-  pinMode(rightAileronPin, OUTPUT);
-  pinMode(elevatorPin, OUTPUT);
-  pinMode(rudderPin, OUTPUT);
-  pinMode(frontLandingGearPin, OUTPUT);
-  pinMode(rearLandingGearPin, OUTPUT);
-  pinMode(bombBayPin, OUTPUT);
-  pinMode(missilePin, OUTPUT);
-  pinMode(xCameraPin, OUTPUT);
-  pinMode(yCameraPin, OUTPUT);
+  pinMode(lAilPin, OUTPUT);
+  pinMode(rAilPin, OUTPUT);
+  pinMode(elePin, OUTPUT);
+  pinMode(rudPin, OUTPUT);
+  pinMode(fGearPin, OUTPUT);
+  pinMode(rGearPin, OUTPUT);
+  pinMode(bayPin, OUTPUT);
+  pinMode(bombPin, OUTPUT);
+  pinMode(xCamPin, OUTPUT);
+  pinMode(yCamPin, OUTPUT);
   pinMode(motorPin, OUTPUT);
 
   Serial.begin(9600);
 }
 
 void loop() {
-  throttleInDur = pulseIn(throttleInPin, HIGH, 30000);
-  rudderInDur = pulseIn(rudderInPin, HIGH, 30000);
-  elevatorInDur = pulseIn(elevatorInPin, HIGH, 30000);
-  aileronInDur = pulseIn(aileronInPin, HIGH, 30000);
-  modeSwitchInDur = pulseIn(modeSwitchInPin, HIGH, 30000);
-  missileInDur = pulseIn(missileInPin, HIGH, 30000);
-  landingInDur = pulseIn(landingInPin, HIGH, 30000);
-  missileNumInDur = pulseIn(missileNumInPin, HIGH, 30000);
+  lYDur = pulseIn(lYPin, HIGH, 30000);
+  lXDur = pulseIn(lXPin, HIGH, 30000);
+  rYDur = pulseIn(rYPin, HIGH, 30000);
+  rXDur = pulseIn(rXPin, HIGH, 30000);
+  sfDur = pulseIn(sfPin, HIGH, 30000);
+  shDur = pulseIn(shPin, HIGH, 30000);
+  saDur = pulseIn(saPin, HIGH, 30000);
+  sbDur = pulseIn(sbPin, HIGH, 30000);
 
-  if (modeSwitchInDur < 1500) {
+  //CHECKS FOR BOMBING STATE
+  if (sfDur < 1500) {
     bombingState = false;
   } else {
-    bombingState = true;
+    if (!bombingState) {
+      throtDur = lYDur;
+      bombingState = true;
+    } else if (abs(lYDur - throtDur) > throtAllow) { //ADD NO INTERUPTION WHEN BOMBING
+      bombingState = false;
+    }
   }
   
-  if (!bombingState) {
+  if (!bombingState || flyOnly) {
     //THROTTLE
-    if (abs(throttleInDur - 1450) > 50) { //FINISH SHIT NOW
-      int throttle = max(min(((double) (throttleInDur - 950) / 1000) * 180, 180), 0);
+    if (abs(lYDur - 1450) > deadzone) { //FINISH SHIT NOW
+      int throttle = interpretStick(lYDur, 180, 0);
 
       //DO REST
     }
 
     //RUDDER
-    if (abs(rudderInDur - 1450) > 50) {
-      int angle = max(min(((double) (rudderInDur - 950) / 1000) * 60, 60), 0) + 60;
-
-      rudderServo.write(180 - angle);
+    if (abs(lXDur - 1450) > deadzone) {
+      rudServo.write(180 - interpretStick(lXDur, 60, 60));
     } else {
-      rudderServo.write(90);
+      rudServo.write(90);
     }
 
     //ELEVATORS
-    if (abs(elevatorInDur - 1450) > 50) {
-      int angle = max(min(((double) (elevatorInDur - 950) / 1000) * 60, 60), 0) + 60;
-
-      elevatorServo.write(angle);
+    if (abs(rYDur - 1450) > deadzone) {
+      eleServo.write(interpretStick(rYDur, 60, 60));
     } else {
-      elevatorServo.write(90);
+      eleServo.write(90);
     }
 
     //AILERONS
-    if (abs(aileronInDur - 1450) > 50) {
-      int angle = max(min(((double) (aileronInDur - 950) / 1000) * 60, 60), 0) + 60;
+    if (abs(rXDur - 1450) > deadzone) {
+      int angle = interpretStick(rXDur, 60, 60);
 
-      leftAileronServo.write(angle);
-      rightAileronServo.write(angle);
+      lAilServo.write(angle);
+      rAilServo.write(angle);
     } else {
-      leftAileronServo.write(90);
-      rightAileronServo.write(90);
+      lAilServo.write(90);
+      rAilServo.write(90);
     }
     
-    //LANDING GEAR
-    if (landingInDur <= 1300) {
-      frontLandingGearServo.write(landingGearAngle);
-      rearLandingGearServo.write(landingGearAngle);
+    if (!flyOnly) {
+      //LANDING GEAR
+      if (saDur <= 1300) {
+        fGearServo.write(gearAngle);
+        rGearServo.write(gearAngle);
 
-      landingGearDeployed = true;
-    } else {
-      frontLandingGearServo.write(0);
-      rearLandingGearServo.write(0);
-      
-      landingGearDeployed = false;
-    }
-    
-    //BOMB BAY
-    if (landingInDur >= 1700) {
-      bombBayServo.write(bombBayAngle);
-
-      bombBayOpen = true;
-    } else {
-      bombBayServo.write(0);
-      
-      bombBayOpen = false;
-    }
-
-    //MISSILE NUM
-    if (missileNumInDur <= 1300) {
-      missileNum = 1;
-    } else if (missileNumInDur <= 1700) {
-      missileNum = 2;
-    } else {
-      missileNum = 20;
-    }
-
-    //MISSILES
-    if (missileInDur < 1500) {
-      bombPrimed = true;
-    } else if (bombPrimed) {
-      bombPrimed = false;
-
-      //BOMB DROP CODE
-      if (bombBayOpen) {
-        Serial.print(missileNum);
-        Serial.println(" bomb(s) dropped");
+        gearDeployed = true;
+      } else {
+        fGearServo.write(0);
+        rGearServo.write(0);
+        
+        gearDeployed = false;
       }
-    }
+      
+      //BOMB BAY
+      if (saDur >= 1700) {
+        bayServo.write(bayAngle);
 
-    //SWITCH TO BOMBING STATE
-    if (false) {
-      bombingState = true;
-      speed = 0; //FILL IN INPUT
+        bayOpen = true;
+      } else {
+        bayServo.write(0);
+        
+        bayOpen = false;
+      }
+
+      //MISSILE NUM
+      if (sbDur <= 1300 || bombs == 1) {
+        bombNum = 1;
+      } else if (sbDur <= 1700) {
+        bombNum = 2;
+      } else {
+        bombNum = bombs;
+      }
+
+      //MISSILES
+      if (shDur < 1500) {
+        bombPrimed = true;
+      } else if (bombPrimed) {
+        bombPrimed = false;
+
+        //BOMB DROP CODE
+        if (bayOpen && bombs > 0) {
+          bombs--;
+
+          Serial.print(missileNum);
+          Serial.println(" bomb(s) dropped");
+
+          Serial.print(bombs);
+          Serial.println(" bomb(s) left");
+        }
+      }
     }
   } else {
     //SET CONSTANT SPEED
     //AUTO STEADY
 
     //CAMERA CONTROLS
-
-    //SWITCH TO FLYING STATE
-    if (false) {
-      bombingState = false;
-    }
   }
-
-//  delay(100);
 }
